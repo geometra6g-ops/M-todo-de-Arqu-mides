@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>El Método de Arquímedes — Aproximación de π</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #c8a84b;
+    --gold-light: #e8cb78;
+    --gold-dim: #7a6130;
+    --parchment: #f5edd6;
+    --sage: #4a7a40;
+    --rust: #c05030;
+    --blue: #4a7ab5;
+    --teal: #3a9a8a;
+    --bg: #0d0b07;
+    --panel-bg: rgba(20,16,8,0.97);
+    --border: rgba(200,168,75,0.28);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--parchment);
+    font-family: 'Crimson Pro', serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(200,168,75,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(26,58,92,0.06) 0%, transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+
+  .container {
+    position:relative; z-index:1;
+    max-width:1340px; margin:0 auto; padding:1rem;
+  }
+
+  /* Header */
+  header {
+    text-align:center; margin-bottom:1.1rem;
+    padding-bottom:0.9rem; border-bottom:1px solid var(--border);
+  }
+  .subtitle-greek {
+    font-family:'Crimson Pro',serif; font-style:italic;
+    font-size:clamp(0.68rem,2vw,0.86rem); color:var(--gold-dim);
+    letter-spacing:0.12em; margin-bottom:0.35rem; opacity:0.8;
+  }
+  h1 {
+    font-family:'Cinzel Decorative',serif;
+    font-size:clamp(0.95rem,3.8vw,1.9rem); color:var(--gold);
+    letter-spacing:0.04em; text-shadow:0 0 40px rgba(200,168,75,0.3); line-height:1.3;
+  }
+  .header-sub {
+    font-family:'Crimson Pro',serif; font-style:italic;
+    font-size:clamp(0.78rem,2.4vw,0.98rem); color:var(--parchment);
+    opacity:0.52; margin-top:0.28rem;
+  }
+
+  /* Layout */
+  .layout {
+    display:grid;
+    grid-template-columns: 1fr 415px;
+    gap:1rem; align-items:start;
+  }
+  @media(max-width:880px){ .layout{ grid-template-columns:1fr; } }
+
+  /* Canvas */
+  .canvas-wrap {
+    background:var(--panel-bg); border:1px solid var(--border);
+    border-radius:2px; padding:0.7rem;
+  }
+  .canvas-container {
+    position:relative; width:100%; padding-top:100%;
+  }
+  canvas {
+    position:absolute; top:0; left:0; width:100%; height:100%; display:block;
+  }
+
+  /* Legend */
+  .legend {
+    display:flex; gap:0.7rem; flex-wrap:wrap; justify-content:center;
+    margin-top:0.55rem;
+    font-size:clamp(0.6rem,1.7vw,0.72rem);
+    color:rgba(245,237,214,0.46); font-family:'Crimson Pro',serif; font-style:italic;
+  }
+  .legend-item{ display:flex; align-items:center; gap:0.32rem; }
+  .legend-dot { width:12px; height:3px; border-radius:1px; }
+
+  /* Progress */
+  .progress-bar-wrap {
+    margin-top:0.65rem; height:2px;
+    background:rgba(200,168,75,0.1); border-radius:1px; overflow:hidden;
+  }
+  .progress-bar {
+    height:100%;
+    background:linear-gradient(90deg,var(--gold-dim),var(--gold));
+    border-radius:1px; transition:width 0.4s ease;
+  }
+  .step-indicator {
+    text-align:center; font-family:'JetBrains Mono',monospace;
+    font-size:clamp(0.54rem,1.5vw,0.62rem); color:var(--gold-dim);
+    margin-top:0.3rem; letter-spacing:0.08em;
+  }
+
+  /* Step buttons */
+  .controls {
+    display:flex; gap:0.38rem; flex-wrap:wrap;
+    margin-top:0.75rem; justify-content:center;
+  }
+  .step-btn {
+    font-family:'Cinzel Decorative',serif;
+    font-size:clamp(0.48rem,1.7vw,0.6rem);
+    background:transparent; border:1px solid var(--gold-dim); color:var(--gold-dim);
+    padding:0.5rem 0.65rem; cursor:pointer; letter-spacing:0.05em;
+    transition:all 0.2s; border-radius:1px; min-height:44px;
+    text-align:center; line-height:1.35;
+  }
+  .step-btn:hover,.step-btn.active {
+    border-color:var(--gold); color:var(--gold);
+    background:rgba(200,168,75,0.1); box-shadow:0 0 10px rgba(200,168,75,0.14);
+  }
+
+  /* Nav buttons */
+  .btn-row {
+    display:flex; gap:0.38rem; margin-top:0.55rem;
+    justify-content:center; flex-wrap:wrap;
+  }
+  .main-btn {
+    font-family:'Crimson Pro',serif;
+    font-size:clamp(0.8rem,2.4vw,0.93rem); font-weight:600;
+    letter-spacing:0.05em;
+    background:linear-gradient(135deg,rgba(200,168,75,0.14),rgba(200,168,75,0.04));
+    border:1px solid var(--gold); color:var(--gold);
+    padding:0.58rem 0.9rem; cursor:pointer; border-radius:1px;
+    transition:all 0.22s; min-height:44px;
+  }
+  .main-btn:hover{ background:rgba(200,168,75,0.2); }
+  .main-btn.dim { border-color:var(--gold-dim); color:var(--gold-dim); font-size:clamp(0.72rem,1.9vw,0.85rem); }
+  .main-btn.dim:hover { border-color:var(--gold); color:var(--gold); }
+
+  .speed-row {
+    display:flex; align-items:center; gap:0.7rem; justify-content:center;
+    font-size:clamp(0.7rem,1.9vw,0.78rem); color:var(--gold-dim);
+    font-family:'Crimson Pro',serif; margin-top:0.45rem;
+  }
+  input[type=range]{
+    -webkit-appearance:none; height:3px;
+    background:rgba(200,168,75,0.24); border-radius:2px; outline:none; width:76px;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px;
+    background:var(--gold); border-radius:50%; cursor:pointer;
+  }
+
+  /* Right panel */
+  .panel { display:flex; flex-direction:column; gap:0.85rem; }
+
+  /* π bounds display */
+  .pi-display {
+    background:var(--panel-bg); border:1px solid var(--border);
+    border-radius:2px; padding:0.9rem 1rem;
+  }
+  .pi-label {
+    font-family:'Cinzel Decorative',serif; font-size:clamp(0.48rem,1.4vw,0.58rem);
+    color:var(--gold-dim); letter-spacing:0.2em; text-transform:uppercase; margin-bottom:0.4rem;
+    text-align:center;
+  }
+  .bounds-row {
+    display:grid; grid-template-columns:1fr auto 1fr; gap:0.4rem;
+    align-items:center; justify-items:center;
+  }
+  .bound-box { text-align:center; }
+  .bound-tag {
+    font-family:'Crimson Pro',serif; font-style:italic;
+    font-size:clamp(0.62rem,1.6vw,0.72rem); opacity:0.55; display:block; margin-bottom:0.15rem;
+  }
+  .bound-val {
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(0.78rem,2.8vw,1.1rem); letter-spacing:0.03em;
+  }
+  .bound-val.lower { color:var(--sage); }
+  .bound-val.upper { color:var(--rust); }
+  .pi-lt {
+    font-family:'Crimson Pro',serif; font-style:italic;
+    font-size:clamp(0.9rem,3vw,1.3rem); color:var(--gold-dim); opacity:0.6;
+  }
+  .pi-center {
+    text-align:center; margin-top:0.45rem;
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(1.15rem,4vw,1.65rem); color:var(--gold);
+    text-shadow:0 0 18px rgba(200,168,75,0.38); letter-spacing:0.04em;
+  }
+  .pi-error {
+    text-align:center; margin-top:0.25rem;
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(0.58rem,1.5vw,0.66rem); color:rgba(245,237,214,0.38);
+  }
+  .true-pi {
+    text-align:center; margin-top:0.15rem;
+    font-family:'JetBrains Mono',monospace;
+    font-size:clamp(0.54rem,1.4vw,0.63rem); color:rgba(245,237,214,0.24);
+  }
+
+  /* Algebra & history boxes */
+  .algebra-box,.history-box {
+    background:var(--panel-bg); border:1px solid var(--border);
+    border-radius:2px; overflow:hidden;
+  }
+  .box-title {
+    font-family:'Cinzel Decorative',serif; font-size:clamp(0.48rem,1.4vw,0.58rem);
+    color:var(--gold); letter-spacing:0.17em;
+    padding:0.58rem 0.85rem; border-bottom:1px solid var(--border);
+    background:rgba(200,168,75,0.05);
+  }
+
+  /* Algebra tabs */
+  .tab-bar {
+    display:flex; border-bottom:1px solid var(--border);
+  }
+  .tab-btn {
+    flex:1; font-family:'Crimson Pro',serif; font-style:italic;
+    font-size:clamp(0.7rem,2vw,0.82rem);
+    background:transparent; border:none; border-right:1px solid var(--border);
+    color:rgba(245,237,214,0.4); padding:0.45rem 0.5rem;
+    cursor:pointer; transition:all 0.18s; text-align:center;
+  }
+  .tab-btn:last-child{ border-right:none; }
+  .tab-btn.active {
+    color:var(--gold); background:rgba(200,168,75,0.08);
+  }
+  .tab-btn.inscr.active { color:var(--sage); background:rgba(58,154,120,0.08); }
+  .tab-btn.circ.active  { color:var(--rust); background:rgba(192,80,48,0.08); }
+
+  .algebra-content {
+    padding:0.82rem;
+    font-size:clamp(0.75rem,2.1vw,0.84rem);
+    line-height:1.88; color:var(--parchment); opacity:0.88;
+  }
+  .algebra-content .var    { color:var(--gold-light); font-style:italic; }
+  .algebra-content .num    { font-family:'JetBrains Mono',monospace; font-size:0.81em; color:#a8d8a0; }
+  .algebra-content .num-r  { font-family:'JetBrains Mono',monospace; font-size:0.81em; color:#e08080; }
+  .algebra-content .formula-line {
+    display:block; padding:0.1rem 0 0.1rem 0.62rem;
+    border-left:2px solid rgba(200,168,75,0.16); margin:0.13rem 0;
+  }
+  .algebra-content .formula-line.g { border-left-color:rgba(58,154,120,0.35); }
+  .algebra-content .formula-line.r { border-left-color:rgba(192,80,48,0.35); }
+  .algebra-content .highlight  { color:var(--gold); font-weight:600; }
+  .algebra-content .highlight-g{ color:#6fcfa0; font-weight:600; }
+  .algebra-content .highlight-r{ color:#e08060; font-weight:600; }
+  .algebra-content .section-head {
+    display:block; margin-top:0.52rem; margin-bottom:0.06rem;
+    color:var(--gold-dim); font-size:0.83em; letter-spacing:0.04em;
+  }
+  .algebra-content .indent {
+    display:block; padding:0.09rem 0 0.09rem 1.25rem; margin:0.1rem 0;
+  }
+  .algebra-content .indent.g { color:#9adfc0; }
+  .algebra-content .indent.r { color:#e09080; }
+
+  /* History */
+  .history-entries{ padding:0.18rem 0; }
+  .history-entry {
+    padding:0.5rem 0.85rem; border-bottom:1px solid rgba(200,168,75,0.07);
+    cursor:pointer; transition:background 0.16s;
+  }
+  .history-entry:last-child{ border-bottom:none; }
+  .history-entry:hover   { background:rgba(200,168,75,0.055); }
+  .history-entry.current { background:rgba(200,168,75,0.1); }
+  .entry-header {
+    display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.1rem;
+  }
+  .entry-polygon { font-family:'Cinzel Decorative',serif; font-size:clamp(0.5rem,1.4vw,0.6rem); color:var(--gold); }
+  .entry-bounds  { font-family:'JetBrains Mono',monospace; font-size:clamp(0.6rem,1.7vw,0.72rem); }
+  .entry-bounds .lo { color:var(--sage); }
+  .entry-bounds .hi { color:var(--rust); }
+  .entry-formula { font-family:'JetBrains Mono',monospace; font-size:clamp(0.54rem,1.4vw,0.61rem); color:rgba(245,237,214,0.34); line-height:1.35; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="subtitle-greek">Συρακούσιος Ἀρχιμήδης · Siracusa, c. 287–212 a.C.</div>
+    <h1>El Método de Exhaución de Arquímedes</h1>
+    <div class="header-sub">Polígonos inscritos y circunscritos — cotas inferior y superior de π — solo Pitágoras</div>
+  </header>
+
+  <div class="layout">
+
+    <!-- Canvas column -->
+    <div>
+      <div class="canvas-wrap">
+        <div class="canvas-container">
+          <canvas id="c" width="700" height="700"></canvas>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#4a7ab5;"></div> Circunferencia r=1</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3a9a8a;"></div> Inscrito (cota inferior)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#c05030;"></div> Circunscrito (cota superior)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(200,168,75,0.3); height:1px; border-top:1px dashed rgba(200,168,75,0.4);"></div> Mediatrices</div>
+        </div>
+
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="progressBar" style="width:0%"></div>
+        </div>
+        <div class="step-indicator" id="stepIndicator">Paso 0 / 5</div>
+
+        <div class="controls">
+          <button class="step-btn active" onclick="goToStep(0)">Hexágono<br>n = 6</button>
+          <button class="step-btn"        onclick="goToStep(1)">Dodecágono<br>n = 12</button>
+          <button class="step-btn"        onclick="goToStep(2)">24 lados</button>
+          <button class="step-btn"        onclick="goToStep(3)">48 lados</button>
+          <button class="step-btn"        onclick="goToStep(4)">96 lados</button>
+        </div>
+
+        <div class="btn-row">
+          <button class="main-btn"     onclick="prevStep()">← Anterior</button>
+          <button class="main-btn"     onclick="nextStep()">Siguiente →</button>
+          <button class="main-btn dim" id="animBtn" onclick="toggleAnim()">▶ Animar</button>
+          <button class="main-btn dim" onclick="resetAll()">↺ Reiniciar</button>
+        </div>
+
+        <div class="speed-row">
+          <span>Velocidad:</span>
+          <input type="range" id="speedRange" min="300" max="3000" value="1500" step="100">
+          <span id="speedLabel">normal</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="panel">
+
+      <!-- π bounds -->
+      <div class="pi-display">
+        <div class="pi-label">Cotas de Arquímedes para π</div>
+        <div class="bounds-row">
+          <div class="bound-box">
+            <span class="bound-tag">p<sub>n</sub> (inscrito) &lt;</span>
+            <span class="bound-val lower" id="piLower">—</span>
+          </div>
+          <div class="pi-lt">π</div>
+          <div class="bound-box">
+            <span class="bound-tag">&lt; P<sub>n</sub> (circunscrito)</span>
+            <span class="bound-val upper" id="piUpper">—</span>
+          </div>
+        </div>
+        <div class="pi-center" id="piMid">—</div>
+        <div class="pi-error" id="piError"></div>
+        <div class="true-pi">π = 3.14159265358979…</div>
+      </div>
+
+      <!-- Algebra with tabs -->
+      <div class="algebra-box">
+        <div class="box-title">Derivación — Teorema de Pitágoras</div>
+        <div class="tab-bar">
+          <button class="tab-btn inscr active" id="tabInscr" onclick="switchTab('inscr')">Inscrito</button>
+          <button class="tab-btn circ"         id="tabCirc"  onclick="switchTab('circ')">Circunscrito</button>
+          <button class="tab-btn"              id="tabBoth"  onclick="switchTab('both')">Cotas</button>
+        </div>
+        <div class="algebra-content" id="algebraContent">
+          <em style="opacity:0.4">Selecciona un paso.</em>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="history-box">
+        <div class="box-title">Convergencia hacia π</div>
+        <div class="history-entries" id="historyEntries"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Steps ─────────────────────────────────────────────────────────────────────
+const STEPS = [
+  { n:6,  label:'Hexágono regular'     },
+  { n:12, label:'Dodecágono regular'   },
+  { n:24, label:'Polígono de 24 lados' },
+  { n:48, label:'Polígono de 48 lados' },
+  { n:96, label:'Polígono de 96 lados' },
+];
+
+// ── Pythagorean chains ────────────────────────────────────────────────────────
+// INSCRIBED polygon (r=1):
+//   l_6 = 1  (hexagon)
+//   h = l/2,  a = √(1−h²),  f = 1−a,  l_new = √(h²+f²)
+//   p_n = n · l_n  →  π_lower = p_n / 2
+
+// CIRCUMSCRIBED polygon (r=1):
+//   The circumscribed n-gon has sides tangent to the circle.
+//   Its apotema equals r=1. Each side of the circumscribed polygon bisects
+//   the same arc as the inscribed one. By similar triangles:
+//     t_n = h_n / a_n   (semilado circunscrito = semilado_inscrito / apotema_inscrita)
+//   where h_n = l_inscr/2,  a_n = √(1−h_n²)
+//   L_n = 2·t_n  (lado circunscrito)
+//   P_n = n · L_n  →  π_upper = P_n / 2
+
+// We store: inscribed sides, and derived circumscribed sides
+
+const INS = [1.0]; // inscribed side lengths
+for (let i=1; i<STEPS.length; i++) {
+  const prev = INS[i-1];
+  const h = prev/2, a = Math.sqrt(1-h*h), f = 1-a;
+  INS.push(Math.sqrt(h*h + f*f));
+}
+
+// Circumscribed: for each step, t = h/a where h,a come from the INSCRIBED side at same step
+function circumSide(step) {
+  const h = INS[step]/2;
+  const a = Math.sqrt(1 - h*h);
+  return 2*(h/a); // = L_n (full side of circumscribed polygon)
+}
+
+function perimIns(step)  { return STEPS[step].n * INS[step]; }
+function perimCirc(step) { return STEPS[step].n * circumSide(step); }
+function piLower(step)   { return perimIns(step) / 2; }
+function piUpper(step)   { return perimCirc(step) / 2; }
+function piMid(step)     { return (piLower(step) + piUpper(step)) / 2; }
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const W=700,H=700,CX=W/2,CY=H/2,R=252; // R slightly smaller to fit circumscribed polygon
+
+function toC(x,y){ return [CX+x*R, CY-y*R]; }
+
+function drawBg(){
+  ctx.clearRect(0,0,W,H);
+  const bg=ctx.createRadialGradient(CX,CY,10,CX,CY,R*1.4);
+  bg.addColorStop(0,'#0f0d08'); bg.addColorStop(1,'#060504');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(200,168,75,0.035)'; ctx.lineWidth=1;
+  for(let i=-3;i<=3;i++){
+    const x=CX+i*R/3; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    const y=CY+i*R/3; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+}
+
+function drawAxes(){
+  ctx.strokeStyle='rgba(200,168,75,0.12)'; ctx.lineWidth=1;
+  ctx.setLineDash([4,7]);
+  ctx.beginPath(); ctx.moveTo(CX,18); ctx.lineTo(CX,H-18); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(18,CY); ctx.lineTo(W-18,CY); ctx.stroke();
+  ctx.setLineDash([]);
+  // radius
+  ctx.strokeStyle='rgba(200,168,75,0.26)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.moveTo(CX,CY); ctx.lineTo(CX+R,CY); ctx.stroke();
+  ctx.fillStyle='rgba(200,168,75,0.26)';
+  ctx.beginPath(); ctx.moveTo(CX+R+7,CY); ctx.lineTo(CX+R-3,CY-4); ctx.lineTo(CX+R-3,CY+4); ctx.fill();
+  ctx.font='italic 12px "Crimson Pro",serif'; ctx.fillStyle='rgba(200,168,75,0.28)';
+  ctx.fillText('r = 1',CX+R+10,CY-5); ctx.fillText('O',CX+5,CY+13);
+}
+
+function drawCircle(){
+  ctx.strokeStyle='rgba(74,122,181,0.72)'; ctx.lineWidth=1.8;
+  ctx.shadowColor='rgba(74,122,181,0.32)'; ctx.shadowBlur=14;
+  ctx.beginPath(); ctx.arc(CX,CY,R,0,Math.PI*2); ctx.stroke();
+  ctx.shadowBlur=0;
+}
+
+// Inscribed vertices (on the circle)
+function insVerts(n){
+  const pts=[];
+  for(let i=0;i<n;i++){
+    const a=2*Math.PI*i/n - Math.PI/2;
+    pts.push([Math.cos(a),Math.sin(a)]);
+  }
+  return pts;
+}
+
+// Circumscribed vertices: each vertex is at the intersection of two tangent lines.
+// The tangent at angle a has the midpoint of each side at angle a+π/n on the circle.
+// Circumscribed vertex between side i and i+1 lies at angle (i+0.5)*2π/n - π/2,
+// at distance r/cos(π/n) from center.
+function circVerts(n){
+  const pts=[], dist = 1/Math.cos(Math.PI/n);
+  for(let i=0;i<n;i++){
+    const a=(2*Math.PI*i/n + Math.PI/n) - Math.PI/2;
+    pts.push([Math.cos(a)*dist, Math.sin(a)*dist]);
+  }
+  return pts;
+}
+
+function drawPolyFromVerts(pts, color, alpha, lw, dashed=false){
+  ctx.strokeStyle=color; ctx.globalAlpha=alpha; ctx.lineWidth=lw;
+  if(dashed) ctx.setLineDash([4,4]); else ctx.setLineDash([]);
+  ctx.shadowColor=color; ctx.shadowBlur=lw>1.5?7:0;
+  ctx.beginPath();
+  pts.forEach((p,i)=>{ const [x,y]=toC(p[0],p[1]); i?ctx.lineTo(x,y):ctx.moveTo(x,y); });
+  ctx.closePath(); ctx.stroke();
+  ctx.shadowBlur=0; ctx.globalAlpha=1; ctx.setLineDash([]);
+}
+
+function drawDots(pts, color, r){
+  ctx.fillStyle=color;
+  pts.forEach(p=>{ const [x,y]=toC(p[0],p[1]); ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); });
+}
+
+function drawBisectors(n, prevN){
+  const prevPts=insVerts(prevN);
+  ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.lineWidth=1; ctx.globalAlpha=0.7;
+  ctx.setLineDash([3,5]);
+  const [ox,oy]=toC(0,0);
+  prevPts.forEach((p,i)=>{
+    const q=prevPts[(i+1)%prevN];
+    const mx=(p[0]+q[0])/2, my=(p[1]+q[1])/2;
+    const len=Math.sqrt(mx*mx+my*my);
+    const [x1,y1]=toC(mx/len,my/len);
+    ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(x1,y1); ctx.stroke();
+  });
+  ctx.globalAlpha=1; ctx.setLineDash([]);
+  // New inscribed vertices
+  const newPts=insVerts(n);
+  ctx.fillStyle='#5abba0'; ctx.globalAlpha=0.9;
+  newPts.forEach(p=>{
+    const isNew=!prevPts.some(q=>Math.abs(q[0]-p[0])<0.001&&Math.abs(q[1]-p[1])<0.001);
+    if(isNew){ const [x,y]=toC(p[0],p[1]); ctx.beginPath(); ctx.arc(x,y,5,0,Math.PI*2); ctx.fill(); }
+  });
+  ctx.globalAlpha=1;
+}
+
+function drawTangentLines(step){
+  // Show one tangent line at a contact point to illustrate the circumscribed construction
+  const n=STEPS[step].n;
+  // Contact point: midpoint of arc between vertex 0 and 1 → angle = π/n - π/2
+  const ang = Math.PI/n - Math.PI/2;
+  const [tx,ty]=toC(Math.cos(ang), Math.sin(ang)); // tangent contact point on circle
+  const [ox,oy]=toC(0,0);
+  // The tangent direction is perpendicular to radius at contact
+  // Perpendicular to (cos(ang), sin(ang)) is (-sin(ang), cos(ang))
+  const tdx=-Math.sin(ang), tdy=Math.cos(ang);
+  const ext=0.45; // extend
+  const [tx0,ty0]=toC(Math.cos(ang)+tdx*ext, Math.sin(ang)+tdy*ext);
+  const [tx1,ty1]=toC(Math.cos(ang)-tdx*ext, Math.sin(ang)-tdy*ext);
+  ctx.strokeStyle='rgba(192,80,48,0.35)'; ctx.lineWidth=1;
+  ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(tx0,ty0); ctx.lineTo(tx1,ty1); ctx.stroke();
+  // apotema line to contact
+  ctx.strokeStyle='rgba(192,80,48,0.4)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(tx,ty); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawSideHighlight(step){
+  // Highlight first inscribed side (green) and first circumscribed side (red)
+  const n=STEPS[step].n;
+  const iPts=insVerts(n), cPts=circVerts(n);
+  // Inscribed
+  const [ix0,iy0]=toC(iPts[0][0],iPts[0][1]);
+  const [ix1,iy1]=toC(iPts[1][0],iPts[1][1]);
+  ctx.strokeStyle='#3a9a8a'; ctx.lineWidth=2.8;
+  ctx.shadowColor='#3a9a8a'; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.moveTo(ix0,iy0); ctx.lineTo(ix1,iy1); ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.font='500 10px "JetBrains Mono",monospace'; ctx.fillStyle='#5abba0';
+  ctx.fillText(`l = ${INS[step].toFixed(5)}`,(ix0+ix1)/2+4,(iy0+iy1)/2-8);
+  // Circumscribed
+  const [cx0,cy0]=toC(cPts[0][0],cPts[0][1]);
+  const [cx1,cy1]=toC(cPts[1][0],cPts[1][1]);
+  ctx.strokeStyle='#c05030'; ctx.lineWidth=2.8;
+  ctx.shadowColor='#c05030'; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.moveTo(cx0,cy0); ctx.lineTo(cx1,cy1); ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#e07055';
+  ctx.fillText(`L = ${circumSide(step).toFixed(5)}`,(cx0+cx1)/2+4,(cy0+cy1)/2-8);
+}
+
+function drawBottomLabels(step){
+  const n=STEPS[step].n;
+  const pL=piLower(step), pU=piUpper(step);
+  ctx.font='500 9.5px "JetBrains Mono",monospace';
+  ctx.fillStyle='rgba(58,154,138,0.8)';
+  ctx.fillText(`p${n} / 2 = ${pL.toFixed(7)} < π`, 12, H-32);
+  ctx.fillStyle='rgba(192,80,48,0.8)';
+  ctx.fillText(`π < P${n} / 2 = ${pU.toFixed(7)}`, 12, H-16);
+  ctx.font='bold 13px "Cinzel Decorative",serif';
+  ctx.fillStyle='rgba(200,168,75,0.36)';
+  ctx.textAlign='center'; ctx.fillText(`n = ${n}`, CX, 24); ctx.textAlign='left';
+}
+
+function render(step){
+  drawBg(); drawAxes(); drawCircle();
+  if(step<0) return;
+  const n=STEPS[step].n;
+  // Faded previous inscribed
+  for(let s=0;s<step;s++){
+    drawPolyFromVerts(insVerts(STEPS[s].n),'#3a9a8a',0.06+0.03*s,0.7);
+    drawPolyFromVerts(circVerts(STEPS[s].n),'#c05030',0.05+0.025*s,0.7,true);
+  }
+  // Bisectors
+  if(step>0) drawBisectors(n, STEPS[step-1].n);
+  // Tangent hint
+  drawTangentLines(step);
+  // Current circumscribed (behind)
+  drawPolyFromVerts(circVerts(n),'#c05030',0.82,1.8,true);
+  drawDots(circVerts(n),'#e07055',3);
+  // Current inscribed (front)
+  drawPolyFromVerts(insVerts(n),'#3a9a8a',0.92,2);
+  drawDots(insVerts(n),'#5abba0',step===0?5:3.5);
+  // Side highlights & labels
+  drawSideHighlight(step);
+  drawBottomLabels(step);
+  // Origin
+  ctx.fillStyle='rgba(200,168,75,0.52)';
+  ctx.beginPath(); ctx.arc(CX,CY,4,0,Math.PI*2); ctx.fill();
+}
+
+// ── Algebra ───────────────────────────────────────────────────────────────────
+let currentTab = 'inscr';
+
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById('tabInscr').classList.toggle('active',tab==='inscr');
+  document.getElementById('tabCirc').classList.toggle('active',tab==='circ');
+  document.getElementById('tabBoth').classList.toggle('active',tab==='both');
+  if(currentStep>=0) document.getElementById('algebraContent').innerHTML=getAlgebra(currentStep);
+}
+
+function getAlgebra(step){
+  if(currentTab==='inscr') return getAlgebraInscr(step);
+  if(currentTab==='circ')  return getAlgebraCirc(step);
+  return getAlgebraBoth(step);
+}
+
+function getAlgebraInscr(step){
+  const n=STEPS[step].n, sl=INS[step], P=perimIns(step), pi=piLower(step);
+  const err=Math.abs(pi-Math.PI);
+  if(step===0){
+    return `
+<span class="formula-line g"><b>Hexágono inscrito — r = 1</b></span>
+<span class="formula-line">Ángulo central: 360° / 6 = 60° → triángulos equiláteros.</span>
+<span class="formula-line">Semilado h = 0.5, verificación Pitágoras:</span>
+<span class="formula-line g indent">a² = r² − h² = 1 − 0.25 = 0.75</span>
+<span class="formula-line g indent">a = √0.75 = √3/2 ≈ <span class="num">${(Math.sqrt(3)/2).toFixed(8)}</span> ✓</span>
+<span class="formula-line g indent">l₆ = 2h = <span class="num">1.00000000</span></span>
+<span class="section-head">Perímetro y cota inferior:</span>
+<span class="formula-line g indent">p₆ = 6 × <span class="num">${sl.toFixed(8)}</span> = <span class="num">${P.toFixed(8)}</span></span>
+<span class="formula-line g indent">π > p₆/2 = <span class="highlight-g">${pi.toFixed(8)}</span></span>
+<span class="formula-line">Error: <span class="num">${err.toExponential(3)}</span></span>`;
+  }
+  const prevN=STEPS[step-1].n, prevSL=INS[step-1];
+  const h=prevSL/2, a=Math.sqrt(1-h*h), f=1-a, ns=Math.sqrt(h*h+f*f);
+  return `
+<span class="formula-line g"><b>${prevN}-ágono → ${n}-ágono inscrito</b></span>
+<span class="formula-line">l<sub>${prevN}</sub> = <span class="num">${prevSL.toFixed(8)}</span></span>
+<span class="section-head">① Semilado:</span>
+<span class="indent g">h = l<sub>${prevN}</sub>/2 = <span class="num">${h.toFixed(8)}</span></span>
+<span class="section-head">② Apotema — Pitágoras (a²+h²=1):</span>
+<span class="indent g">a = √(1−h²) = √<span class="num">${(1-h*h).toFixed(8)}</span> = <span class="num">${a.toFixed(8)}</span></span>
+<span class="section-head">③ Flecha:</span>
+<span class="indent g">f = 1−a = <span class="num">${f.toFixed(8)}</span></span>
+<span class="section-head">④ Nuevo lado — Pitágoras:</span>
+<span class="indent g">l<sub>${n}</sub> = √(h²+f²) = <span class="num">${ns.toFixed(8)}</span></span>
+<span class="section-head">⑤ Cota inferior:</span>
+<span class="indent g">p<sub>${n}</sub> = ${n} × <span class="num">${ns.toFixed(8)}</span> = <span class="num">${P.toFixed(8)}</span></span>
+<span class="indent g">π > p<sub>${n}</sub>/2 = <span class="highlight-g">${pi.toFixed(8)}</span></span>
+<span class="formula-line">Error: <span class="num">${err.toExponential(3)}</span></span>`;
+}
+
+function getAlgebraCirc(step){
+  const n=STEPS[step].n;
+  const h=INS[step]/2, a=Math.sqrt(1-h*h), t=h/a;
+  const L=2*t, P=perimCirc(step), pi=piUpper(step);
+  const err=Math.abs(pi-Math.PI);
+  return `
+<span class="formula-line r"><b>${n}-ágono circunscrito</b></span>
+<span class="formula-line">Lados tangentes a la circunferencia → apotema = r = 1.</span>
+<span class="formula-line">El punto de tangencia bisecta el arco entre dos vértices.</span>
+<span class="section-head">Triángulo O–tangencia–vértice (circunscrito):</span>
+<span class="formula-line r indent">Por semejanza con triángulo inscrito:</span>
+<span class="formula-line r indent">t / h = r / a &nbsp;⇒&nbsp; t = h / a</span>
+<span class="formula-line r indent">(demostración solo con triángulos semejantes + Pitágoras)</span>
+<span class="section-head">Valores del paso ${n}:</span>
+<span class="indent r">h = l<sub>${n}</sub>/2 = <span class="num-r">${h.toFixed(8)}</span></span>
+<span class="indent r">a = √(1−h²) = <span class="num-r">${a.toFixed(8)}</span></span>
+<span class="indent r">t = h/a = <span class="num-r">${t.toFixed(8)}</span></span>
+<span class="indent r">L<sub>${n}</sub> = 2t = <span class="num-r">${L.toFixed(8)}</span></span>
+<span class="section-head">Cota superior:</span>
+<span class="indent r">P<sub>${n}</sub> = ${n} × <span class="num-r">${L.toFixed(8)}</span> = <span class="num-r">${P.toFixed(8)}</span></span>
+<span class="indent r">π < P<sub>${n}</sub>/2 = <span class="highlight-r">${pi.toFixed(8)}</span></span>
+<span class="formula-line">Error: <span class="num-r">${err.toExponential(3)}</span></span>`;
+}
+
+function getAlgebraBoth(step){
+  const n=STEPS[step].n;
+  const pL=piLower(step), pU=piUpper(step);
+  const mid=piMid(step), interval=pU-pL;
+  const errL=Math.abs(pL-Math.PI), errU=Math.abs(pU-Math.PI);
+  return `
+<span class="formula-line"><b>Cotas de Arquímedes — n = ${n}</b></span>
+<br>
+<span class="formula-line g indent">π > p<sub>${n}</sub>/2 = <span class="highlight-g">${pL.toFixed(10)}</span></span>
+<span class="formula-line r indent">π < P<sub>${n}</sub>/2 = <span class="highlight-r">${pU.toFixed(10)}</span></span>
+<br>
+<span class="section-head">Intervalo:</span>
+<span class="indent">P<sub>${n}</sub>/2 − p<sub>${n}</sub>/2 = <span class="num">${interval.toExponential(4)}</span></span>
+<span class="section-head">Estimación central:</span>
+<span class="indent">π ≈ (p+P) / 4 = <span class="highlight">${mid.toFixed(10)}</span></span>
+<br>
+<span class="section-head">π real = 3.14159265358979…</span>
+<span class="indent">Error cota inferior: <span class="num">${errL.toExponential(4)}</span></span>
+<span class="indent">Error cota superior: <span class="num">${errU.toExponential(4)}</span></span>
+${step===4?`<br><span class="formula-line"><b>Resultado de Arquímedes (n=96):</b></span>
+<span class="formula-line">3 + 10/71 < π < 3 + 1/7</span>
+<span class="formula-line indent">3.14084… < π < 3.14285…</span>`:''}`;
+}
+
+// ── History ───────────────────────────────────────────────────────────────────
+function updateHistory(upTo){
+  const c=document.getElementById('historyEntries'); c.innerHTML='';
+  for(let s=0;s<=upTo;s++){
+    const n=STEPS[s].n, pL=piLower(s), pU=piUpper(s);
+    const d=document.createElement('div');
+    d.className='history-entry'+(s===upTo?' current':'');
+    d.onclick=()=>goToStep(s);
+    d.innerHTML=`
+      <div class="entry-header">
+        <span class="entry-polygon">${STEPS[s].label}</span>
+        <span class="entry-bounds"><span class="lo">${pL.toFixed(6)}</span> &lt; π &lt; <span class="hi">${pU.toFixed(6)}</span></span>
+      </div>
+      <div class="entry-formula">intervalo = ${(pU-pL).toExponential(3)} | l=${INS[s].toFixed(5)} | L=${circumSide(s).toFixed(5)}</div>
+    `;
+    c.appendChild(d);
+  }
+}
+
+// ── State & navigation ────────────────────────────────────────────────────────
+let currentStep=-1, animating=false, animTimer=null;
+
+function goToStep(step){
+  if(step<0||step>=STEPS.length) return;
+  currentStep=step;
+  render(step);
+  const pL=piLower(step), pU=piUpper(step), mid=piMid(step);
+  document.getElementById('piLower').textContent=pL.toFixed(8);
+  document.getElementById('piUpper').textContent=pU.toFixed(8);
+  document.getElementById('piMid').textContent=mid.toFixed(8);
+  document.getElementById('piError').textContent=
+    `intervalo = ${(pU-pL).toExponential(4)} | error medio = ${Math.abs(mid-Math.PI).toExponential(4)}`;
+  document.querySelectorAll('.step-btn').forEach((b,i)=>b.classList.toggle('active',i===step));
+  document.getElementById('progressBar').style.width=((step+1)/STEPS.length*100)+'%';
+  document.getElementById('stepIndicator').textContent=`Paso ${step+1}/5 — ${STEPS[step].label}`;
+  updateHistory(step);
+  document.getElementById('algebraContent').innerHTML=getAlgebra(step);
+}
+
+function nextStep(){ if(currentStep<STEPS.length-1) goToStep(currentStep+1); }
+function prevStep(){ if(currentStep>0) goToStep(currentStep-1); }
+
+function resetAll(){
+  stopAnim(); currentStep=-1;
+  drawBg(); drawAxes(); drawCircle();
+  document.getElementById('piLower').textContent='—';
+  document.getElementById('piUpper').textContent='—';
+  document.getElementById('piMid').textContent='—';
+  document.getElementById('piError').textContent='';
+  document.getElementById('algebraContent').innerHTML='<em style="opacity:0.4">Selecciona un paso.</em>';
+  document.getElementById('historyEntries').innerHTML='';
+  document.getElementById('progressBar').style.width='0%';
+  document.getElementById('stepIndicator').textContent='Paso 0 / 5';
+  document.querySelectorAll('.step-btn').forEach(b=>b.classList.remove('active'));
+}
+
+function getDelay(){
+  const v=document.getElementById('speedRange').value;
+  document.getElementById('speedLabel').textContent=v>2000?'lento':v>1000?'normal':'rápido';
+  return parseInt(v);
+}
+
+function toggleAnim(){
+  if(animating){stopAnim();return;}
+  animating=true;
+  document.getElementById('animBtn').textContent='⏸ Pausar';
+  resetAll();
+  let s=0;
+  function next(){
+    if(!animating)return;
+    if(s>=STEPS.length){stopAnim();return;}
+    goToStep(s++);
+    animTimer=setTimeout(next,getDelay());
+  }
+  animTimer=setTimeout(next,300);
+}
+
+function stopAnim(){
+  animating=false;
+  if(animTimer)clearTimeout(animTimer);
+  document.getElementById('animBtn').textContent='▶ Animar';
+}
+
+document.getElementById('speedRange').addEventListener('input',getDelay);
+
+// Init
+drawBg(); drawAxes(); drawCircle(); goToStep(0);
+</script>
+</body>
+</html>
